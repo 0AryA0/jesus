@@ -12,7 +12,7 @@ long long dec_to_binary (int);
 
 int main()
 {
-    FILE *midi = fopen ("MIDI_sample.mid" , "rb") ;
+    FILE *midi = fopen ("Lacrimosa by Mozart.mid" , "rb") ;
     FILE *output_hex = fopen ("hex.txt" , "w");
 
     unsigned char bytes[30];
@@ -28,15 +28,17 @@ int main()
     fgets (bytes , 29 , input_hex);
 
     
-    printf("Basic information about the data in the MIDI file :\nThe format of this MIDI file is %d and contains %d tracks in it . " , data_format(bytes) , data_tracks(bytes));
+    printf("format %d, %d tracks, division: " , data_format(bytes) , data_tracks(bytes));
 
     if(data_division(bytes) % 10 == 0)
     {
-        printf("bit 15 division part is 0 < metrical timing > ...\n%d ticks per quarter note.\n" , binary_to_dec(data_division(bytes) / 10));
+        printf("%d ticks / 1/4 note" , binary_to_dec(data_division(bytes)));
     }
     else
     {
-        printf("bit 15 division part is 1 < timecode > ...\n")
+        printf("bit 15 division part is 1 < timecode > ...");
+        
+
     }
     
 }
