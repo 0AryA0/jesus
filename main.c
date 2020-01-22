@@ -4,11 +4,14 @@
 #include "beep.h"
 #include "freq.h"
 
+
 //gcc freq.o main.c beep.o sintable.o -lasound
 typedef struct 
 {
     int channel;
     double ms_per_tick;
+    char channle_note_on [3];
+    char channle_note_off [3];
 } track_info;
 
 typedef struct 
@@ -43,6 +46,7 @@ int main()
     int division = headerChunk_info(midi_file , header);
     free(header);
     track_chunks(midi_file, division);
+    free(header);
     fclose(midi_file);
 }
 
@@ -68,18 +72,18 @@ double tempo_event (FILE * midi_file, unsigned char * read_bytes_hexed, int divi
         tempo[i * 2] = read_bytes_hexed[0];
         tempo[i * 2 + 1] = read_bytes_hexed[1];
     }
-        tempo[(tempo_data_bytes + 1) * 2] = '\0';
-        int bpm = 60000000 / hex_to_dec(tempo);
-        double value = bpm * division ;
-        double seconds_per_tick = 60000 / value ;
-        printf("%lf millisecond per midi tick ...\n", seconds_per_tick);
-        return seconds_per_tick;
+    tempo[(tempo_data_bytes + 1) * 2] = '\0';
+    int bpm = 60000000 / hex_to_dec(tempo);
+    double value = bpm * division ;
+    double seconds_per_tick = 60000 / value ;
+    printf("%lf millisecond per midi tick ...\n", seconds_per_tick);
+    return seconds_per_tick;
 }
 
 int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, track_info * track, unsigned char * note, int delta_time)
 {
     read_byte(midi_file, read_byte_hexed);
-    if(strcmp(read_byte_hexed, "82") == 0)
+    if(strcmp(read_byte_hexed, track->channle_note_off) == 0)
     {
         read_byte(midi_file, read_byte_hexed);
         check_note(read_byte_hexed, note);
@@ -87,9 +91,9 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
         read_byte(midi_file, read_byte_hexed);
         int ms_per_tick = (int) track->ms_per_tick;
         int ms = (int) (delta_time * track->ms_per_tick);
-        beep(Note_freq(note), ms + 300);
+        beep(Note_freq(note), ms + 280);
     }
-    else if(strcmp(read_byte_hexed, "92") == 0)
+    else if(strcmp(read_byte_hexed, track->channle_note_on) == 0)
     {
         read_byte(midi_file, read_byte_hexed);
         check_note(read_byte_hexed, note);
@@ -112,6 +116,15 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
         {
             track->ms_per_tick = tempo_event(midi_file, read_byte_hexed, division);
         }
+        else if(strcmp(read_byte_hexed, "2f") == 0)
+        {
+            read_byte(midi_file, read_byte_hexed);
+            if(strcmp(read_byte_hexed, "00") == 0)
+            {
+                printf("end of track chunk\n");
+                return 0;
+            }
+        }
         else if(strcmp(read_byte_hexed, "58") == 0)
         {
             read_byte(midi_file, read_byte_hexed);
@@ -128,8 +141,53 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     else if(strcmp(read_byte_hexed, "c2") == 0)
     {
         printf("channel 2\n");
+        strcpy(track->channle_note_on, "92\0");
+        strcpy(track->channle_note_off, "82\0");
         read_byte(midi_file, read_byte_hexed);
     }
+    else if(strcmp(read_byte_hexed, "c0") == 0)
+    {
+        printf("channel 0\n");
+        strcpy(track->channle_note_on, "90\0");
+        strcpy(track->channle_note_off, "80\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c1") == 0)
+    {
+        printf("channel 1\n");
+        strcpy(track->channle_note_on, "91\0");
+        strcpy(track->channle_note_off, "81\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c3") == 0)
+    {
+        printf("channel 3\n");
+        strcpy(track->channle_note_on, "93\0");
+        strcpy(track->channle_note_off, "83\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c4") == 0)
+    {
+        printf("channel 4\n");
+        strcpy(track->channle_note_on, "94\0");
+        strcpy(track->channle_note_off, "84\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c5") == 0)
+    {
+        printf("channel 5\n");
+        strcpy(track->channle_note_on, "95\0");
+        strcpy(track->channle_note_off, "85\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c6") == 0)
+    {
+        printf("channel 6\n");
+        strcpy(track->channle_note_on, "96\0");
+        strcpy(track->channle_note_off, "86\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    return 1;
 }
 
 int operation(FILE * midi_file, int division)
@@ -143,13 +201,16 @@ int operation(FILE * midi_file, int division)
     
     int delta_time ;
     int flag = 0 ;
-    while (running_state < 1000)
+    while (running_state != 0)
     {
         delta_time = read_delta_time(midi_file);
-        read_event(midi_file, read_bytes_hexed, division, track, note, delta_time);
-        running_state++;
+        running_state = read_event(midi_file, read_bytes_hexed, division, track, note, delta_time);
     }
+    free(read_bytes_hexed);
+    free(note);
+    free(track);
 
+    track_chunks(midi_file, division);
 }
 
 int read_delta_time(FILE * midi_file)
@@ -169,6 +230,128 @@ int read_delta_time(FILE * midi_file)
     //printf("delta time is %d\n", value);
     return value;
 }
+
+
+int track_chunks(FILE * midi_file, int division)
+{
+    int running_state = 1 ;
+    
+    unsigned char track_header[5];
+    fread(track_header, 4, 1, midi_file);
+    track_header[4] = '\0';
+    if(strcmp(track_header, "MTrk") == 0)
+    {
+        printf("Track Chunk is valid.\n");   
+        fread(track_header, 4, 1, midi_file);
+        unsigned char str[8];
+        for(int i = 0; i < 4; i++)
+        {
+            sprintf(&str[i*2], "%02x", track_header[i]);
+        }
+        printf("length of track chunk:%d\n", hex_to_dec(str));
+        printf("start reading events...\n");
+
+        operation(midi_file, division);        
+    }
+    else
+    {
+        printf("Track Chunk is invalid\n");
+        exit(0);
+    }
+
+}
+int headerChunk_info (FILE * midi_file , header_chunk *header)
+{
+    char normal_format [5];
+    fread(normal_format , 4 , 1 , midi_file);
+    normal_format[4] = '\0';
+    if(strcmp(normal_format , "MThd") == 0)
+    {
+        printf("Header chunk found ...\nMidi file is valid.\n");
+        fread(header->length, 4, 1, midi_file);
+        fread(header->format, 2, 1, midi_file);
+        fread(header->tracks, 2, 1, midi_file);
+        fread(header->division, 2, 1, midi_file);
+
+        for(int i = 0; i < 4; i++)
+        {
+            sprintf(&header->show_length[i*2], "%02x", header->length[i]);
+        }
+        for(int i = 0; i < 2; i++)
+        {
+            sprintf(&header->show_format[i*2], "%02x", header->format[i]);
+            sprintf(&header->show_tracks[i*2], "%02x", header->tracks[i]);
+            sprintf(&header->show_division[i*2], "%02x", header->division[i]);
+        }
+        if(header->show_division[0] == 48)
+        {
+            printf("format %d, %d tracks, division: %d ticks / 1/4 note\n", hex_to_dec(header->show_format) , hex_to_dec(header->show_tracks), hex_to_dec(header->show_division));
+        }
+        else
+        {
+            printf("format %d, %d tracks, division: %d ticks / 1/4 note\n", hex_to_dec(header->show_format) , hex_to_dec(header->show_tracks), hex_to_dec(header->show_division));
+        }
+        return(hex_to_dec(header->show_division));
+    }
+    else
+    {
+        printf("midi file is invalid ...");
+        exit(0);
+    }
+}
+int hex_to_dec(unsigned char * hexvalue)
+{
+    int len = strlen(hexvalue);
+
+    int base = 1 ;
+
+    int dec_val = 0 ;
+
+    for(int i = len - 1 ; i >= 0 ; i--)
+    {
+        if (hexvalue[i] >= 'a' && hexvalue[i] <= 'f')
+        {
+            hexvalue[i] -= 32 ;
+        }
+        if(hexvalue[i] >= '0' && hexvalue[i] <= '9')
+        {
+            dec_val += (hexvalue[i] - 48) * base ;
+            base *= 16 ;
+        }
+        else if (hexvalue[i] >= 'A' && hexvalue[i] <= 'F')
+        {
+            dec_val += (hexvalue[i] - 55) * base ;
+            base *= 16 ;
+        }
+    }
+    return dec_val ;
+}
+
+void hex_to_binary(unsigned char * res, unsigned char * input)
+{
+char binary[16][5] = {"0000", "0001", "0010", "0011", "0100", "0101","0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110","1111"};
+char digits [] = "0123456789abcdef";
+
+
+res[0] = '\0';
+int p = 0;
+int value =0;
+    while(input[p])
+    {
+        const unsigned char *v = strchr(digits, tolower(input[p]));
+        if(v[0]>96){
+            value=v[0]-87;
+        }
+        else{
+            value=v[0]-48;
+        }
+        if (v){
+            strcat(res, binary[value]);
+        }
+        p++;
+    }
+}
+
 void check_note (unsigned char * read_bytes_hexed, unsigned char * note)
 {
     int note_int = hex_to_dec (read_bytes_hexed);
@@ -389,125 +572,5 @@ void check_note (unsigned char * read_bytes_hexed, unsigned char * note)
         strcpy(note, "A#0\0");
     else if(note_int == 119) 
         strcpy(note, "B0\0");
-}
-
-int track_chunks(FILE * midi_file, int division)
-{
-    int running_state = 1 ;
-    
-    unsigned char track_header[5];
-    fread(track_header, 4, 1, midi_file);
-    track_header[4] = '\0';
-    if(strcmp(track_header, "MTrk") == 0)
-    {
-        printf("Track Chunk is valid.\n");   
-        fread(track_header, 4, 1, midi_file);
-        unsigned char str[8];
-        for(int i = 0; i < 4; i++)
-        {
-            sprintf(&str[i*2], "%02x", track_header[i]);
-        }
-        printf("length of track chunk:%d\n", hex_to_dec(str));
-        printf("start reading events...\n");
-
-        operation(midi_file, division);        
-    }
-    else
-    {
-        printf("Track Chunk is invalid\n");
-        exit(0);
-    }
-
-}
-int headerChunk_info (FILE * midi_file , header_chunk *header)
-{
-    char normal_format [5];
-    fread(normal_format , 4 , 1 , midi_file);
-    normal_format[4] = '\0';
-    if(strcmp(normal_format , "MThd") == 0)
-    {
-        printf("Header chunk found ...\nMidi file is valid.\n");
-        fread(header->length, 4, 1, midi_file);
-        fread(header->format, 2, 1, midi_file);
-        fread(header->tracks, 2, 1, midi_file);
-        fread(header->division, 2, 1, midi_file);
-
-        for(int i = 0; i < 4; i++)
-        {
-            sprintf(&header->show_length[i*2], "%02x", header->length[i]);
-        }
-        for(int i = 0; i < 2; i++)
-        {
-            sprintf(&header->show_format[i*2], "%02x", header->format[i]);
-            sprintf(&header->show_tracks[i*2], "%02x", header->tracks[i]);
-            sprintf(&header->show_division[i*2], "%02x", header->division[i]);
-        }
-        if(header->show_division[0] == 48)
-        {
-            printf("format %d, %d tracks, division: %d ticks / 1/4 note\n", hex_to_dec(header->show_format) , hex_to_dec(header->show_tracks), hex_to_dec(header->show_division));
-        }
-        else
-        {
-            printf("format %d, %d tracks, division: %d ticks / 1/4 note\n", hex_to_dec(header->show_format) , hex_to_dec(header->show_tracks), hex_to_dec(header->show_division));
-        }
-        return(hex_to_dec(header->show_division));
-    }
-    else
-    {
-        printf("midi file is invalid ...");
-        exit(0);
-    }
-}
-int hex_to_dec(unsigned char * hexvalue)
-{
-    int len = strlen(hexvalue);
-
-    int base = 1 ;
-
-    int dec_val = 0 ;
-
-    for(int i = len - 1 ; i >= 0 ; i--)
-    {
-        if (hexvalue[i] >= 'a' && hexvalue[i] <= 'f')
-        {
-            hexvalue[i] -= 32 ;
-        }
-        if(hexvalue[i] >= '0' && hexvalue[i] <= '9')
-        {
-            dec_val += (hexvalue[i] - 48) * base ;
-            base *= 16 ;
-        }
-        else if (hexvalue[i] >= 'A' && hexvalue[i] <= 'F')
-        {
-            dec_val += (hexvalue[i] - 55) * base ;
-            base *= 16 ;
-        }
-    }
-    return dec_val ;
-}
-
-void hex_to_binary(unsigned char * res, unsigned char * input)
-{
-char binary[16][5] = {"0000", "0001", "0010", "0011", "0100", "0101","0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110","1111"};
-char digits [] = "0123456789abcdef";
-
-
-res[0] = '\0';
-int p = 0;
-int value =0;
-    while(input[p])
-    {
-        const unsigned char *v = strchr(digits, tolower(input[p]));
-        if(v[0]>96){
-            value=v[0]-87;
-        }
-        else{
-            value=v[0]-48;
-        }
-        if (v){
-            strcat(res, binary[value]);
-        }
-        p++;
-    }
 }
 
