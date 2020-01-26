@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include "beep.h"
 #include "freq.h"
+//returns frequency of a note
+#include "check_note.h"
+//includes hex_to_dec and check_note functions
 
-
-//gcc freq.o main.c beep.o sintable.o -lasound
+//to compile code use : gcc main.c freq.o cheack_note.o beep.o sintable.o -lasound
 typedef struct 
 {
     int channel;
@@ -26,28 +28,143 @@ typedef struct
     unsigned char show_division[5];
 } header_chunk;
 
-int hex_to_dec (unsigned char *);
-int headerChunk_info (FILE * , header_chunk *);
+int headerChunk_info (FILE *);
 int track_chunks(FILE *, int);
 int operation(FILE *, int);
 void read_byte (FILE *, unsigned char *);
-void check_note (unsigned char *, unsigned char *);
 double tempo_event(FILE *, unsigned char *, int);
 void hex_to_binary(unsigned char *, unsigned char *);
 int read_delta_time(FILE *);
 int read_event(FILE *, unsigned char *, int, track_info *, unsigned char *, int);
+void menu();
+void play_single_track();
+void open_playlist();
+void add_playlist();
 
+char play_list_address[201];
+int swch = 0;
 
 int main()
 {
-    header_chunk *header = (header_chunk *) malloc (sizeof(header_chunk));
-    FILE *midi_file ;
-    midi_file = fopen ("Lacrimosa by Mozart.mid" , "rb");
-    int division = headerChunk_info(midi_file , header);
-    free(header);
+    menu();
+}
+
+void play_single_track()
+{
+    char file_name[101];
+    scanf(" ");
+    gets(file_name);
+    FILE * midi_file;
+    midi_file = fopen(file_name, "rb");
+    if(!midi_file)
+    {
+        printf("can't open this file ...\n");
+        menu();
+    }
+    int division = headerChunk_info(midi_file);
     track_chunks(midi_file, division);
-    free(header);
     fclose(midi_file);
+}
+
+void add_playlist()
+{
+    FILE * play_lists = fopen("/home/arya/phase3/playlists/play_lists.txt", "a+");
+    printf("Enter your playlist name (spaces are not allowed): ");
+    char play_list_name [101] , address[201];
+    scanf("%s", play_list_name);
+    fprintf(play_lists, "%s\n", play_list_name);
+    strcpy(address, "/home/arya/phase3/playlists/");
+    strcat(address, play_list_name);
+    strcat(address, ".txt");
+    //printf("%s\n", address);
+    FILE * added_playlist = fopen(address, "a+");
+    char name[201];
+    printf("Enter address of midi files : \n");
+    do
+    {
+        scanf("%s", name);
+        if(strcmp(name, "exit") == 0)
+            break;
+        fprintf(added_playlist, "%s\n", name);
+
+    } while (strcmp(name, "exit") != 0);
+
+    fclose(play_lists);
+    fclose(added_playlist);
+}
+void open_playlist()
+{
+    swch = 1;
+    FILE * play_lists = fopen("/home/arya/phase3/playlists/play_lists.txt", "r");
+    char str[51], address[201], track_names[201];
+    int i = 0 ;
+    while (fscanf(play_lists, "%s", str) != EOF)
+    {
+        printf("%d: %s\n", ++i, str);
+    }
+    
+    printf("select playlist (enter full playlist name): \n");
+    scanf("%s", str);
+    strcpy(address, "/home/arya/phase3/playlists/");
+    strcat(address, str);
+    strcat(address, ".txt");
+    strcpy(play_list_address, address);
+    i = 0 ;
+    FILE * play_list = fopen(address, "r+");
+    while (fscanf(play_list, "%s", track_names) != EOF)
+    {
+        printf("%d: %s\n", ++i, track_names);
+    }
+    printf("enter full name of the track you want to play: ");
+    scanf("%s", track_names);
+    FILE * midi_file = fopen(track_names, "rb");
+    if(!midi_file)
+    {
+        printf("can't open this file ...\n");
+        menu();
+    }
+    int division = headerChunk_info(midi_file);
+    track_chunks(midi_file, division);
+    fclose(midi_file);
+    fclose(play_lists);
+    fclose(play_list);
+    
+}
+void menu()
+{
+    int running_state = 1;
+
+    while (running_state != 0)
+    {
+        printf("    -___-MENU-___-\n***********************\n");
+        printf("1 : *PLAY SINGLE TRACK*\n2 : *ADD PLAYLIST*\n3 : *OPEN PLAYLIST*\n4 : *EXIT*\n***********************\n");
+        int operation;
+        scanf("%d", &operation);
+        if(operation == 1)
+        {  
+            printf("***********************\n");
+            printf("Enter midi file address\nExample : /home/arya/phase3/midi_files/Lacrimosa by Mozart.mid\nEnter name here : ");
+            play_single_track();
+        }
+        else if(operation == 2)
+        {
+            printf("***********************\n");
+            add_playlist();
+        }
+        else if(operation == 4)
+        {
+            printf("***********************\n");
+            exit(0);
+        }
+        else
+        {
+            printf("***********************\n");
+            open_playlist();
+        }
+        
+        printf("***********************\n");
+    }
+    
 }
 
 void read_byte (FILE * midi_file, unsigned char * read_bytes_hexed)
@@ -124,6 +241,12 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
                 printf("end of track chunk\n");
                 return 0;
             }
+            else
+            {
+                printf("end event is not valid...\nexiting the program\n");
+                exit(0);
+            }
+            
         }
         else if(strcmp(read_byte_hexed, "58") == 0)
         {
@@ -138,6 +261,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
             }
         }
     }
+    
     else if(strcmp(read_byte_hexed, "c2") == 0)
     {
         printf("channel 2\n");
@@ -187,7 +311,75 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
         strcpy(track->channle_note_off, "86\0");
         read_byte(midi_file, read_byte_hexed);
     }
+    else if(strcmp(read_byte_hexed, "c7") == 0)
+    {
+        printf("channel 7\n");
+        strcpy(track->channle_note_on, "97\0");
+        strcpy(track->channle_note_off, "87\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c8") == 0)
+    {
+        printf("channel 8\n");
+        strcpy(track->channle_note_on, "98\0");
+        strcpy(track->channle_note_off, "88\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "c9") == 0)
+    {
+        printf("channel 9\n");
+        strcpy(track->channle_note_on, "99\0");
+        strcpy(track->channle_note_off, "89\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "ca") == 0)
+    {
+        printf("channel 10\n");
+        strcpy(track->channle_note_on, "9a\0");
+        strcpy(track->channle_note_off, "8a\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "cb") == 0)
+    {
+        printf("channel 11\n");
+        strcpy(track->channle_note_on, "9b\0");
+        strcpy(track->channle_note_off, "8b\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "cc") == 0)
+    {
+        printf("channel 12\n");
+        strcpy(track->channle_note_on, "9c\0");
+        strcpy(track->channle_note_off, "8c\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "cd") == 0)
+    {
+        printf("channel 13\n");
+        strcpy(track->channle_note_on, "9d\0");
+        strcpy(track->channle_note_off, "8d\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "ce") == 0)
+    {
+        printf("channel 14\n");
+        strcpy(track->channle_note_on, "9e\0");
+        strcpy(track->channle_note_off, "8e\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else if(strcmp(read_byte_hexed, "cf") == 0)
+    {
+        printf("channel 15\n");
+        strcpy(track->channle_note_on, "9f\0");
+        strcpy(track->channle_note_off, "8f\0");
+        read_byte(midi_file, read_byte_hexed);
+    }
+    else
+    {
+        read_event(midi_file, read_byte_hexed, division, track, note, delta_time);
+    }
     return 1;
+
 }
 
 int operation(FILE * midi_file, int division)
@@ -256,12 +448,36 @@ int track_chunks(FILE * midi_file, int division)
     else
     {
         printf("Track Chunk is invalid\n");
-        exit(0);
+        
+        if(swch == 1)
+        {
+            int i = 0;
+            char track_names[201];
+            FILE * play_list = fopen(play_list_address, "r+");
+            while (fscanf(play_list, "%s", track_names) != EOF)
+            {
+                printf("%d: %s\n", ++i, track_names);
+            }
+            printf("enter full name of the track you want to play: ");
+            scanf("%s", track_names);
+            FILE * midi_file = fopen(track_names, "rb");
+            if(!midi_file)
+            {
+                printf("can't open this file ...\n");
+                menu();
+            }
+
+            int division = headerChunk_info(midi_file);
+            track_chunks(midi_file, division);
+            fclose(midi_file);
+            fclose(play_list);
+        }
     }
 
 }
-int headerChunk_info (FILE * midi_file , header_chunk *header)
+int headerChunk_info (FILE * midi_file)
 {
+    header_chunk * header = (header_chunk *) malloc (sizeof(header_chunk));
     char normal_format [5];
     fread(normal_format , 4 , 1 , midi_file);
     normal_format[4] = '\0';
@@ -291,40 +507,20 @@ int headerChunk_info (FILE * midi_file , header_chunk *header)
         {
             printf("format %d, %d tracks, division: %d ticks / 1/4 note\n", hex_to_dec(header->show_format) , hex_to_dec(header->show_tracks), hex_to_dec(header->show_division));
         }
+        if(hex_to_dec(header->show_format) == 2)
+        {
+            printf("sorry we can't play this format");
+            menu();
+        }
+        free(header);
         return(hex_to_dec(header->show_division));
     }
     else
     {
         printf("midi file is invalid ...");
-        exit(0);
+        free(header);
+        menu();
     }
-}
-int hex_to_dec(unsigned char * hexvalue)
-{
-    int len = strlen(hexvalue);
-
-    int base = 1 ;
-
-    int dec_val = 0 ;
-
-    for(int i = len - 1 ; i >= 0 ; i--)
-    {
-        if (hexvalue[i] >= 'a' && hexvalue[i] <= 'f')
-        {
-            hexvalue[i] -= 32 ;
-        }
-        if(hexvalue[i] >= '0' && hexvalue[i] <= '9')
-        {
-            dec_val += (hexvalue[i] - 48) * base ;
-            base *= 16 ;
-        }
-        else if (hexvalue[i] >= 'A' && hexvalue[i] <= 'F')
-        {
-            dec_val += (hexvalue[i] - 55) * base ;
-            base *= 16 ;
-        }
-    }
-    return dec_val ;
 }
 
 void hex_to_binary(unsigned char * res, unsigned char * input)
@@ -351,226 +547,3 @@ int value =0;
         p++;
     }
 }
-
-void check_note (unsigned char * read_bytes_hexed, unsigned char * note)
-{
-    int note_int = hex_to_dec (read_bytes_hexed);
-
-    if(note_int == 12)
-        strcpy(note, "C0\0");
-    else if(note_int == 13) 
-        strcpy(note, "C#0\0");
-    else if(note_int == 14) 
-        strcpy(note, "D0\0");
-    else if(note_int == 15) 
-        strcpy(note, "D#0\0");
-    else if(note_int == 16) 
-        strcpy(note, "E0\0");
-    else if(note_int == 17) 
-        strcpy(note, "F0\0");
-    else if(note_int == 18) 
-        strcpy(note, "F#0\0");
-    else if(note_int == 19) 
-        strcpy(note, "G0\0");
-    else if(note_int == 20) 
-        strcpy(note, "G#0\0");
-    else if(note_int == 21) 
-        strcpy(note, "A0\0");
-    else if(note_int == 22) 
-        strcpy(note, "A#0\0");
-    else if(note_int == 23) 
-        strcpy(note, "B0\0");
-    else if(note_int == 24) 
-        strcpy(note, "C1\0");
-    else if(note_int == 25) 
-        strcpy(note, "C#1\0");
-    else if(note_int == 26) 
-        strcpy(note, "D1\0");
-    else if(note_int == 27) 
-        strcpy(note, "D#1\0");
-    else if(note_int == 28) 
-        strcpy(note, "E1\0");
-    else if(note_int == 29) 
-        strcpy(note, "F1\0");
-    else if(note_int == 30) 
-        strcpy(note, "F#1\0");
-    else if(note_int == 31) 
-        strcpy(note, "G1\0");
-    else if(note_int == 32) 
-        strcpy(note, "G#1\0");
-    else if(note_int == 33) 
-        strcpy(note, "A1\0");
-    else if(note_int == 34) 
-        strcpy(note, "A#1\0");
-    else if(note_int == 35) 
-        strcpy(note, "B1\0");
-    else if(note_int == 36) 
-        strcpy(note, "C2\0");
-    else if(note_int == 37) 
-        strcpy(note, "C#2\0");
-    else if(note_int == 38) 
-        strcpy(note, "D2\0");
-    else if(note_int == 39) 
-        strcpy(note, "D#2\0");
-    else if(note_int == 40) 
-        strcpy(note, "E2\0");
-    else if(note_int == 41) 
-        strcpy(note, "F2\0");
-    else if(note_int == 42) 
-        strcpy(note, "F#2\0");
-    else if(note_int == 43) 
-        strcpy(note, "G2\0");
-    else if(note_int == 44) 
-        strcpy(note, "G#2\0");
-    else if(note_int == 45) 
-        strcpy(note, "A2\0");
-    else if(note_int == 46) 
-        strcpy(note, "A#2\0");
-    else if(note_int == 47) 
-        strcpy(note, "B2\0");
-    else if(note_int == 48) 
-        strcpy(note, "C3\0");
-    else if(note_int == 49) 
-        strcpy(note, "C#3\0");
-    else if(note_int == 50) 
-        strcpy(note, "D3\0");
-    else if(note_int == 51) 
-        strcpy(note, "D#3\0");
-    else if(note_int == 52) 
-        strcpy(note, "E3\0");
-    else if(note_int == 53) 
-        strcpy(note, "F3\0");
-    else if(note_int == 54) 
-        strcpy(note, "F#3\0");
-    else if(note_int == 55) 
-        strcpy(note, "G3\0");
-    else if(note_int == 56) 
-        strcpy(note, "G#3\0");
-    else if(note_int == 57) 
-        strcpy(note, "A3\0");
-    else if(note_int == 58) 
-        strcpy(note, "A#3\0");
-    else if(note_int == 59) 
-        strcpy(note, "B3\0");
-    else if(note_int == 60) 
-        strcpy(note, "C4\0");
-    else if(note_int == 61) 
-        strcpy(note, "C#4\0");
-    else if(note_int == 62) 
-        strcpy(note, "D4\0");
-    else if(note_int == 63) 
-        strcpy(note, "D#4\0");
-    else if(note_int == 64) 
-        strcpy(note, "E4\0");
-    else if(note_int == 65) 
-        strcpy(note, "F4\0");
-    else if(note_int == 66) 
-        strcpy(note, "F#4\0");
-    else if(note_int == 67) 
-        strcpy(note, "G4\0");
-    else if(note_int == 68) 
-        strcpy(note, "G#4\0");
-    else if(note_int == 69) 
-        strcpy(note, "A4\0");
-    else if(note_int == 70) 
-        strcpy(note, "A#4\0");
-    else if(note_int == 71) 
-        strcpy(note, "B4\0");
-    else if(note_int == 72) 
-        strcpy(note, "C5\0");
-    else if(note_int == 73) 
-        strcpy(note, "C#5\0");
-    else if(note_int == 74) 
-        strcpy(note, "D5\0");
-    else if(note_int == 75) 
-        strcpy(note, "D#5\0");
-    else if(note_int == 76) 
-        strcpy(note, "E5\0");
-    else if(note_int == 77) 
-        strcpy(note, "F5\0");
-    else if(note_int == 78) 
-        strcpy(note, "F#5\0");
-    else if(note_int == 79) 
-        strcpy(note, "G5\0");
-    else if(note_int == 80) 
-        strcpy(note, "G#5\0");
-    else if(note_int == 81) 
-        strcpy(note, "A5\0");
-    else if(note_int == 82) 
-        strcpy(note, "A#5\0");
-    else if(note_int == 83) 
-        strcpy(note, "B5\0");
-    else if(note_int == 84) 
-        strcpy(note, "C6\0");
-    else if(note_int == 85) 
-        strcpy(note, "C#6\0");
-    else if(note_int == 86) 
-        strcpy(note, "D6\0");
-    else if(note_int == 87) 
-        strcpy(note, "D#6\0");
-    else if(note_int == 88) 
-        strcpy(note, "E6\0");
-    else if(note_int == 89) 
-        strcpy(note, "F6\0");
-    else if(note_int == 90) 
-        strcpy(note, "F#6\0");
-    else if(note_int == 91) 
-        strcpy(note, "G6\0");
-    else if(note_int == 92) 
-        strcpy(note, "G#6\0");
-    else if(note_int == 93) 
-        strcpy(note, "A6\0");
-    else if(note_int == 94) 
-        strcpy(note, "A#6\0");
-    else if(note_int == 95) 
-        strcpy(note, "B6\0");
-    else if(note_int == 96) 
-        strcpy(note, "C7\0");
-    else if(note_int == 97) 
-        strcpy(note, "C#7\0");
-    else if(note_int == 98) 
-        strcpy(note, "D7\0");
-    else if(note_int == 99) 
-        strcpy(note, "D#7\0");
-    else if(note_int == 100 )
-        strcpy(note, "E7\0");
-    else if(note_int == 101 )
-        strcpy(note, "F7\0");
-    else if(note_int == 102)
-        strcpy(note, "F#7\0");
-    else if(note_int == 103)
-        strcpy(note, "G7\0");
-    else if(note_int == 104)
-        strcpy(note, "G#7\0");
-    else if(note_int == 105)
-        strcpy(note, "A7\0");
-    else if(note_int == 106)
-        strcpy(note, "A#7\0");
-    else if(note_int == 107)
-        strcpy(note, "B7\0");
-    else if(note_int == 108)
-        strcpy(note, "C0\0");
-    else if(note_int == 109)
-        strcpy(note, "C#0\0");
-    else if(note_int == 110)
-        strcpy(note, "D0\0");
-    else if(note_int == 111)
-        strcpy(note, "D#0\0");
-    else if(note_int == 112)
-        strcpy(note, "E0\0");
-    else if(note_int == 113)
-        strcpy(note, "F0\0");
-    else if(note_int == 114)
-        strcpy(note, "F#0\0");
-    else if(note_int == 115)
-        strcpy(note, "G0\0");
-    else if(note_int == 116) 
-        strcpy(note, "G#0\0");
-    else if(note_int == 117) 
-        strcpy(note, "A0\0");
-    else if(note_int == 118) 
-        strcpy(note, "A#0\0");
-    else if(note_int == 119) 
-        strcpy(note, "B0\0");
-}
-
