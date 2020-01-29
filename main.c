@@ -6,6 +6,13 @@
 //returns frequency of a note
 #include "check_note.h"
 //includes hex_to_dec and check_note functions
+#define CHANGETORED printf("\033[0;31m");
+#define CHANGETOYELLOW printf("\033[0;33m");
+#define CHANGETOGREEN printf("\033[0;32m");
+#define CHANGETOCYAN printf("\033[0;36m");
+#define CHANGETOMAGENTA printf("\033[0;35m");
+
+
 
 //to compile code use : gcc main.c freq.o cheack_note.o beep.o sintable.o -lasound
 typedef struct 
@@ -40,9 +47,16 @@ void menu();
 void play_single_track();
 void open_playlist();
 void add_playlist();
+void add_to_existing();
+void print_heart();
+
 
 char play_list_address[201];
 int swch = 0;
+int number = 0;
+
+typedef enum{FALSE, TRUE} bool;
+bool running_statue = FALSE;
 
 int main()
 {
@@ -51,7 +65,7 @@ int main()
 
 void play_single_track()
 {
-    char file_name[101];
+    char file_name[201];
     scanf(" ");
     gets(file_name);
     FILE * midi_file;
@@ -66,6 +80,59 @@ void play_single_track()
     fclose(midi_file);
 }
 
+void print_heart()
+{
+    if(number == 0)
+    {
+        printf("  *****     *****\n");
+    }
+    else if(number == 1)
+    {
+        printf(" *******   *******\n");
+    }
+    else if (number == 2)
+    {
+        printf("********* *********\n");
+    }
+    else if (number == 3)
+    {
+        printf(" *****************\n");
+    }
+    else if(number == 4)
+    {
+        printf("  ***************\n");
+    }
+    else if(number == 5)
+    {
+        printf("   *************\n");
+    }
+    else if(number == 6)
+    {
+        printf("    ***********\n");
+    }
+    else if(number == 7)
+    {
+        printf("     *********\n");
+    }
+    else if(number == 8)
+    {
+        printf("      *******\n");
+    }
+    else if(number == 9)
+    {
+        printf("       *****\n");
+    }
+    else if(number == 10)
+    {
+        printf("        ***\n");
+    }
+    else if(number == 11)
+    {
+        printf("         *\n\n");
+        number = -1;
+    }
+    number++;
+}
 void add_playlist()
 {
     FILE * play_lists = fopen("/home/arya/phase3/playlists/play_lists.txt", "a+");
@@ -79,7 +146,7 @@ void add_playlist()
     //printf("%s\n", address);
     FILE * added_playlist = fopen(address, "a+");
     char name[201];
-    printf("Enter address of midi files : \n");
+    printf("Enter address of midi files : (enter exit when finished)\n");
     do
     {
         scanf("%s", name);
@@ -98,13 +165,15 @@ void open_playlist()
     FILE * play_lists = fopen("/home/arya/phase3/playlists/play_lists.txt", "r");
     char str[51], address[201], track_names[201];
     int i = 0 ;
+    printf("LIST OF PLAYLIST\n");
     while (fscanf(play_lists, "%s", str) != EOF)
     {
         printf("%d: %s\n", ++i, str);
     }
     
-    printf("select playlist (enter full playlist name): \n");
+    printf("select playlist (enter full playlist name): ");
     scanf("%s", str);
+    printf("***********************\nLIST OF MIDI FILES IN THIS PLAYLIST\n");
     strcpy(address, "/home/arya/phase3/playlists/");
     strcat(address, str);
     strcat(address, ".txt");
@@ -130,38 +199,81 @@ void open_playlist()
     fclose(play_list);
     
 }
+
+void add_to_existing()
+{
+    printf("Select playlist : \n");
+    FILE * playlists_list = fopen("/home/arya/phase3/playlists/play_lists.txt", "r");
+    int i = 0;
+    
+    char str[51], address[201];
+    while (fscanf(playlists_list, "%s", str) != EOF)
+    {
+        printf("%d: %s\n", ++i, str);
+    }
+    scanf("%s", str);
+    strcpy(address, "/home/arya/phase3/playlists/");
+    strcat(address, str);
+    strcat(address, ".txt");
+    fclose(playlists_list);
+    FILE * playlist = fopen (address, "a+");
+    char name[201];
+    printf("Enter address of midi files : (enter exit when finished) \n***********************\n");
+    do
+    {
+        scanf("%s", name);
+        if(strcmp(name, "exit") == 0)
+            break;
+        fprintf(playlist, "%s\n", name);
+
+    } while (strcmp(name, "exit") != 0);
+    fclose(playlist);
+}
 void menu()
 {
+    CHANGETOCYAN
     int running_state = 1;
 
     while (running_state != 0)
     {
-        printf("    -___-MENU-___-\n***********************\n");
-        printf("1 : *PLAY SINGLE TRACK*\n2 : *ADD PLAYLIST*\n3 : *OPEN PLAYLIST*\n4 : *EXIT*\n***********************\n");
+        printf("***********************\n    -___-MENU-___-\n***********************\n");
+        printf("1 : *PLAY SINGLE TRACK*\n2 : *ADD PLAYLIST*\n3 : *OPEN PLAYLIST*\n4 : *ADD TO EXISTING PLAYLIST*\n5 : *EXIT*\n***********************\n          ");
         int operation;
         scanf("%d", &operation);
         if(operation == 1)
         {  
             printf("***********************\n");
-            printf("Enter midi file address\nExample : /home/arya/phase3/midi_files/Lacrimosa by Mozart.mid\nEnter name here : ");
+            CHANGETOMAGENTA
+            printf("Enter midi file address\nExample : /home/arya/phase3/midi_files/forelise.mid\nEnter name here : ");
             play_single_track();
         }
         else if(operation == 2)
+        {   
+            printf("***********************\n");
+            CHANGETOMAGENTA
+            add_playlist();
+        }
+        else if(operation == 5)
         {
             printf("***********************\n");
-            add_playlist();
+            CHANGETOMAGENTA
+            exit(0);
+        }
+        else if(operation == 3)
+        {
+            printf("***********************\n");
+            CHANGETOMAGENTA
+            open_playlist();
         }
         else if(operation == 4)
         {
-            printf("***********************\n");
-            exit(0);
+            CHANGETOMAGENTA
+            add_to_existing();
         }
         else
         {
-            printf("***********************\n");
-            open_playlist();
+            menu();
         }
-        
         printf("***********************\n");
     }
     
@@ -200,11 +312,24 @@ double tempo_event (FILE * midi_file, unsigned char * read_bytes_hexed, int divi
 int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, track_info * track, unsigned char * note, int delta_time)
 {
     read_byte(midi_file, read_byte_hexed);
-    if(strcmp(read_byte_hexed, track->channle_note_off) == 0)
+    if (running_statue && strcmp(read_byte_hexed, track->channle_note_off))
+    {
+        check_note(read_byte_hexed, note);
+        int ms_per_tick = (int) track->ms_per_tick;
+        int ms = (int) (delta_time * track->ms_per_tick);
+        read_byte(midi_file, read_byte_hexed);
+        CHANGETORED
+        print_heart();
+        beep(Note_freq(note), ms + 280);
+        running_statue = TRUE;
+    }
+    else if(strcmp(read_byte_hexed, track->channle_note_off) == 0)
     {
         read_byte(midi_file, read_byte_hexed);
         check_note(read_byte_hexed, note);
-        printf("playing note : %s\n", note);
+        running_statue = FALSE;
+        CHANGETORED
+        print_heart();
         read_byte(midi_file, read_byte_hexed);
         int ms_per_tick = (int) track->ms_per_tick;
         int ms = (int) (delta_time * track->ms_per_tick);
@@ -214,11 +339,12 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     {
         read_byte(midi_file, read_byte_hexed);
         check_note(read_byte_hexed, note);
-        //printf("note on : %s\n", note);
         read_byte(midi_file, read_byte_hexed);
+        running_statue = TRUE;
     }
     else if(strcmp(read_byte_hexed, "ff" ) == 0)
     {
+        running_statue = FALSE;
         read_byte(midi_file, read_byte_hexed);
         if(strcmp(read_byte_hexed, "03") == 0)
         {
@@ -264,6 +390,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     
     else if(strcmp(read_byte_hexed, "c2") == 0)
     {
+        running_statue = FALSE;
         printf("channel 2\n");
         strcpy(track->channle_note_on, "92\0");
         strcpy(track->channle_note_off, "82\0");
@@ -271,6 +398,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c0") == 0)
     {
+        running_statue = FALSE;
         printf("channel 0\n");
         strcpy(track->channle_note_on, "90\0");
         strcpy(track->channle_note_off, "80\0");
@@ -278,6 +406,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c1") == 0)
     {
+        running_statue = FALSE;
         printf("channel 1\n");
         strcpy(track->channle_note_on, "91\0");
         strcpy(track->channle_note_off, "81\0");
@@ -285,6 +414,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c3") == 0)
     {
+        running_statue = FALSE;
         printf("channel 3\n");
         strcpy(track->channle_note_on, "93\0");
         strcpy(track->channle_note_off, "83\0");
@@ -292,6 +422,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c4") == 0)
     {
+        running_statue = FALSE;
         printf("channel 4\n");
         strcpy(track->channle_note_on, "94\0");
         strcpy(track->channle_note_off, "84\0");
@@ -299,6 +430,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c5") == 0)
     {
+        running_statue = FALSE;
         printf("channel 5\n");
         strcpy(track->channle_note_on, "95\0");
         strcpy(track->channle_note_off, "85\0");
@@ -306,6 +438,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c6") == 0)
     {
+        running_statue = FALSE;
         printf("channel 6\n");
         strcpy(track->channle_note_on, "96\0");
         strcpy(track->channle_note_off, "86\0");
@@ -313,6 +446,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c7") == 0)
     {
+        running_statue = FALSE;
         printf("channel 7\n");
         strcpy(track->channle_note_on, "97\0");
         strcpy(track->channle_note_off, "87\0");
@@ -320,6 +454,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c8") == 0)
     {
+        running_statue = FALSE;
         printf("channel 8\n");
         strcpy(track->channle_note_on, "98\0");
         strcpy(track->channle_note_off, "88\0");
@@ -327,6 +462,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "c9") == 0)
     {
+        running_statue = FALSE;
         printf("channel 9\n");
         strcpy(track->channle_note_on, "99\0");
         strcpy(track->channle_note_off, "89\0");
@@ -334,6 +470,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "ca") == 0)
     {
+        running_statue = FALSE;
         printf("channel 10\n");
         strcpy(track->channle_note_on, "9a\0");
         strcpy(track->channle_note_off, "8a\0");
@@ -341,6 +478,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "cb") == 0)
     {
+        running_statue = FALSE;
         printf("channel 11\n");
         strcpy(track->channle_note_on, "9b\0");
         strcpy(track->channle_note_off, "8b\0");
@@ -348,6 +486,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "cc") == 0)
     {
+        running_statue = FALSE;
         printf("channel 12\n");
         strcpy(track->channle_note_on, "9c\0");
         strcpy(track->channle_note_off, "8c\0");
@@ -355,6 +494,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "cd") == 0)
     {
+        running_statue = FALSE;
         printf("channel 13\n");
         strcpy(track->channle_note_on, "9d\0");
         strcpy(track->channle_note_off, "8d\0");
@@ -362,6 +502,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "ce") == 0)
     {
+        running_statue = FALSE;
         printf("channel 14\n");
         strcpy(track->channle_note_on, "9e\0");
         strcpy(track->channle_note_off, "8e\0");
@@ -369,6 +510,7 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else if(strcmp(read_byte_hexed, "cf") == 0)
     {
+        running_statue = FALSE;
         printf("channel 15\n");
         strcpy(track->channle_note_on, "9f\0");
         strcpy(track->channle_note_off, "8f\0");
@@ -376,6 +518,8 @@ int read_event(FILE * midi_file, unsigned char * read_byte_hexed, int division, 
     }
     else
     {
+        running_statue = FALSE;
+        //printf("skipping an unexpected event...\n");
         read_event(midi_file, read_byte_hexed, division, track, note, delta_time);
     }
     return 1;
@@ -396,6 +540,7 @@ int operation(FILE * midi_file, int division)
     while (running_state != 0)
     {
         delta_time = read_delta_time(midi_file);
+        CHANGETOYELLOW
         running_state = read_event(midi_file, read_bytes_hexed, division, track, note, delta_time);
     }
     free(read_bytes_hexed);
@@ -451,6 +596,8 @@ int track_chunks(FILE * midi_file, int division)
         
         if(swch == 1)
         {
+            CHANGETOCYAN
+            printf("all tracks in this playlist : \n");
             int i = 0;
             char track_names[201];
             FILE * play_list = fopen(play_list_address, "r+");
@@ -458,12 +605,13 @@ int track_chunks(FILE * midi_file, int division)
             {
                 printf("%d: %s\n", ++i, track_names);
             }
-            printf("enter full name of the track you want to play: ");
+            printf("enter full name of the track you want to play or enter any letter to back to menu : \n");
             scanf("%s", track_names);
             FILE * midi_file = fopen(track_names, "rb");
             if(!midi_file)
             {
                 printf("can't open this file ...\n");
+                CHANGETOCYAN
                 menu();
             }
 
